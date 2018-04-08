@@ -1,2 +1,2 @@
 # Score-Scraper
-Get's links to articles from the Score Esports
+Gets links to articles from the Score Esports
