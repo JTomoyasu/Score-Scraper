@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Score Scraper</title>
+    {{!--
+    <script src="/../../public/app.js"></script> --}}
+    <link href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/flatly/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    {{{ body }}}
+</body>
+<script>
+    $(document).ready(function () {
+        $.get("/scrape", function (data) {
+            console.log("step 1 complete");
+        }).then(function () {
+            $.getJSON("/articles", function (resp) {
+                for (var i = 0; i < resp.length; i++) {
+                    $(".article-container").append("<p data-id='" + resp[i]._id + "'>" + resp[i].title + "<br /> <a href='" + resp[i].link + "'>" + resp[i].link + "</a> <br />" + resp[i].summary + "</p>");
+                }
+            });
+        });
+    });
+    $(document).on("click", "p", function () {
+        // Empty the comments from the comment section
+        $(".comment-area").empty();
+        // Save the id from the p tag
+        var thisId = $(this).attr("data-id");
+        sessionStorage.setItem("currentArticleID", thisId);
+        // Now make an ajax call for the Article
+        $.ajax({
+            method: "GET",
+            url: "/articles/" + thisId
+        })
+            // With that done, add the comment information to the page
+            .then(function (data) {
+                console.log(data);
+                console.log(data.comments);
+                for (j = 0; j < data.comments.length; j++) {
+                    $.ajax({
+                        method: "GET",
+                        url: "/comments/" + data.comments[j]
+                    })
+                        .then(function (resp) {
+                            console.log(resp)
+                            if (resp !== null) {
+                                var tempDiv = $("div");
+                                var title = ("<h4>" + resp.title + "</h4>");
+                                var body = ("<q>" + resp.body + "</q>");
+                                var delButton = $("<button class='delbutton'>Delete</button>");
+                                delButton.attr("commentID", resp._id);
+                                tempDiv.append(title, body, delButton);
+                                console.log(JSON.stringify(title, null, 2));
+                                //$(".comment-area").append(tempDiv);
+                            }
+                        })
+                }
+            });
+    });
+
+    // When you click the savecomment button
+    $(document).on("click", "#savecomment", function () {
+        if (sessionStorage.getItem("currentArticleID")) {
+            // Grab the id associated with the article from the submit button
+            var thisId = sessionStorage.getItem("currentArticleID");
+            // Run a POST request to change the comment, using what's entered in the inputs
+            $.ajax({
+                method: "POST",
+                url: "/articles/" + thisId,
+                data: {
+                    // Value taken from title input
+                    title: $("#titleinput").val(),
+                    // Value taken from comment textarea
+                    body: $("#bodyinput").val()
+                }
+            })
+                // With that done
+                .then(function (data) {
+                    // Log the response
+                    console.log(data);
+                    // Empty the comments section
+                    $(".comment-area").empty();
+                });
+
+            // Also, remove the values entered in the input and textarea for comment entry
+            $("#titleinput").val("");
+            $("#bodyinput").val("");
+        }
+    });
+    $(document).on("click", ".delbutton", function () {
+        $.ajax({
+            method: "DELETE",
+            url: "/comments/" + $(this).attr("commentID")
+        }).then(function (data) {
+            console.log(data);
+        })
+    })
+
+</script>
+
+</html>
